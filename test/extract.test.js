@@ -51,3 +51,12 @@ test('drops safeguarding emails and Ofcom drama numbers', () => {
   assert.deepStrictEqual(x.extractEmails('info@club.co.uk help@nspcc.org.uk safeguarding@englandgolf.org a@essex.gov.uk'), ['info@club.co.uk']);
   assert.deepStrictEqual(x.extractPhones('020 7946 0123 or 01992 522118'), ['01992 522118']);
 });
+
+test('drops Wix/Sentry tracking addresses and tab-joined names', () => {
+  assert.deepStrictEqual(x.extractEmails('a@club.co.uk 605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com'), ['a@club.co.uk']);
+  assert.deepStrictEqual(x.extractContacts('Course Manager: Tony James\tYes').map(c => c.name), ['Tony James']);
+});
+
+test('prefers the listed website domain when the site redirects elsewhere', () => {
+  assert.strictEqual(x.pickBestEmail(['enquiries@otherhotel.co.uk', 'reservations@uffordpark.co.uk'], 'group.co.uk', 'www.uffordpark.co.uk'), 'reservations@uffordpark.co.uk');
+});

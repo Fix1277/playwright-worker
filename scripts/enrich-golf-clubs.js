@@ -18,7 +18,7 @@ const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 const { chromium } = require('playwright');
 const {
-  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail, NOT_A_NAME, NOT_CLUB_EMAIL, FICTIONAL_PHONE,
+  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail, NOT_A_NAME, NOT_CLUB_EMAIL, FICTIONAL_PHONE, JUNK_EMAIL,
 } = require('./extract');
 
 const MAX_EXTRA_PAGES = 4;
@@ -137,12 +137,14 @@ async function scrapeClub(context, row) {
 function applyResult(row, r) {
   const filled = [];
   // Cached results may predate the name filter.
-  r.contacts = r.contacts.filter(c => !NOT_A_NAME.test(c.name));
-  r.emails = r.emails.filter(e => !NOT_CLUB_EMAIL.test(e));
+  r.contacts = r.contacts
+    .map(c => ({ ...c, name: c.name.split(/\t|\s{2,}/)[0] }))
+    .filter(c => c.name.includes(' ') && !NOT_A_NAME.test(c.name));
+  r.emails = r.emails.filter(e => !NOT_CLUB_EMAIL.test(e) && !JUNK_EMAIL.test(e));
   const template = r.phones.some(p => FICTIONAL_PHONE.test(p));
   r.phones = r.phones.filter(p => !FICTIONAL_PHONE.test(p));
   if (!row.email && r.emails.length) {
-    row.email = pickBestEmail(r.emails, r.host);
+    row.email = pickBestEmail(r.emails, r.host, row.website);
     filled.push('email');
   }
   if (!row.phone && r.phones.length) {

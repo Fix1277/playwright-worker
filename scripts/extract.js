@@ -35,7 +35,7 @@ const NOT_CLUB_EMAIL = /@(englandgolf\.org|nspcc\.org\.uk|[a-z]+\.gov\.uk|r-a\.o
 // Ofcom's reserved drama numbers: a sign of a template site, never real.
 const FICTIONAL_PHONE = /^(020 7946 0|0117 496 0|0161 496 0|0113 496 0|0191 498 0|01632 9)/;
 
-const JUNK_EMAIL = /\.(png|jpe?g|gif|webp|svg)$|@(example|domain|email|sentry|wixpress)\.|^(name|your|user)@/i;
+const JUNK_EMAIL = /\.(png|jpe?g|gif|webp|svg)$|@(example|domain|email)\.|sentry|wixpress|^[0-9a-f]{20,}@|^(name|your|user)@/i;
 
 // Cloudflare "email protection" hides addresses as hex in data-cfemail.
 function decodeCfEmail(hex) {
@@ -83,7 +83,7 @@ function extractPhones(text) {
 function extractContacts(text) {
   const out = [];
   const seen = new Set();
-  const name = "([A-Z][a-z'’-]+(?:[ \\t]+[A-Z][a-z'’-]+){1,2})";
+  const name = "([A-Z][a-z'’-]+(?: +[A-Z][a-z'’-]+){1,2})";
   for (const role of ROLES) {
     const r = role.replace(/ /g, '\\s+');
     const patterns = [
@@ -122,12 +122,12 @@ function rankLinks(links, baseHost) {
 }
 
 // Prefer an address on the club's own domain, then generic inboxes.
-function pickBestEmail(emails, siteHost) {
-  const host = (siteHost || '').replace(/^www\./, '');
+function pickBestEmail(emails, ...siteHosts) {
+  const hosts = siteHosts.filter(Boolean).map(h => h.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]);
   const score = e => {
     let s = 0;
     const domain = e.split('@')[1];
-    if (host && (domain === host || host.endsWith(domain) || domain.endsWith(host))) s -= 10;
+    if (hosts.some(host => domain === host || host.endsWith(domain) || domain.endsWith(host))) s -= 10;
     if (/^(info|office|enquir|admin|secretary|manager|gm|reception)/.test(e)) s -= 3;
     if (/^(proshop|pro|shop|events|bar|catering|restaurant|functions|bookings)/.test(e)) s += 2;
     return s;
@@ -146,5 +146,6 @@ module.exports = {
   ROLES,
   NOT_A_NAME,
   NOT_CLUB_EMAIL,
+  JUNK_EMAIL,
   FICTIONAL_PHONE,
 };
