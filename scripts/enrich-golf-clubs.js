@@ -18,7 +18,7 @@ const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 const { chromium } = require('playwright');
 const {
-  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail, NOT_A_NAME,
+  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail, NOT_A_NAME, NOT_CLUB_EMAIL, FICTIONAL_PHONE,
 } = require('./extract');
 
 const MAX_EXTRA_PAGES = 4;
@@ -138,6 +138,9 @@ function applyResult(row, r) {
   const filled = [];
   // Cached results may predate the name filter.
   r.contacts = r.contacts.filter(c => !NOT_A_NAME.test(c.name));
+  r.emails = r.emails.filter(e => !NOT_CLUB_EMAIL.test(e));
+  const template = r.phones.some(p => FICTIONAL_PHONE.test(p));
+  r.phones = r.phones.filter(p => !FICTIONAL_PHONE.test(p));
   if (!row.email && r.emails.length) {
     row.email = pickBestEmail(r.emails, r.host);
     filled.push('email');
@@ -158,7 +161,8 @@ function applyResult(row, r) {
     const hasName = Boolean(row.contact_name);
     row.priority = hasEmail && hasName ? 'A' : hasEmail || hasName ? 'B' : 'C';
   }
-  row.web_status = r.status + (r.error ? `: ${r.error}` : '');
+  row.web_status = r.status + (r.error ? `: ${r.error}` : '') +
+    (template ? ' (site shows placeholder phone - may be a template, verify email)' : '');
   row.web_emails = r.emails.join('; ');
   row.web_phones = r.phones.join('; ');
   row.web_contacts = r.contacts.map(c => `${c.name} (${c.role})`).join('; ');

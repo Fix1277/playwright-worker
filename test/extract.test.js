@@ -46,3 +46,8 @@ test('ignores headings and buttons that look like names', () => {
   const c = x.extractContacts('Visitor Booking - General Manager\nCrondon Park Golf, Director of Golf\nGeneral Manager: Iain Evans');
   assert.deepStrictEqual(c.map(p => p.name), ['Iain Evans']);
 });
+
+test('drops safeguarding emails and Ofcom drama numbers', () => {
+  assert.deepStrictEqual(x.extractEmails('info@club.co.uk help@nspcc.org.uk safeguarding@englandgolf.org a@essex.gov.uk'), ['info@club.co.uk']);
+  assert.deepStrictEqual(x.extractPhones('020 7946 0123 or 01992 522118'), ['01992 522118']);
+});

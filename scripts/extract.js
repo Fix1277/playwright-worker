@@ -30,6 +30,11 @@ const LINK_HINTS = [
   /about/i,
 ];
 
+// Safeguarding/governing-body addresses many club sites list in footers.
+const NOT_CLUB_EMAIL = /@(englandgolf\.org|nspcc\.org\.uk|[a-z]+\.gov\.uk|r-a\.org|golf-foundation\.org)$|^(safeguarding|childrens\.safeguarding|cpsu)@/i;
+// Ofcom's reserved drama numbers: a sign of a template site, never real.
+const FICTIONAL_PHONE = /^(020 7946 0|0117 496 0|0161 496 0|0113 496 0|0191 498 0|01632 9)/;
+
 const JUNK_EMAIL = /\.(png|jpe?g|gif|webp|svg)$|@(example|domain|email|sentry|wixpress)\.|^(name|your|user)@/i;
 
 // Cloudflare "email protection" hides addresses as hex in data-cfemail.
@@ -53,7 +58,7 @@ function extractEmails(html) {
   for (const m of deobf.matchAll(EMAIL_RE)) found.add(m[0]);
   return [...found]
     .map(e => e.toLowerCase().replace(/^mailto:/, '').replace(/[.,;]+$/, ''))
-    .filter(e => !JUNK_EMAIL.test(e));
+    .filter(e => !JUNK_EMAIL.test(e) && !NOT_CLUB_EMAIL.test(e));
 }
 
 function normalisePhone(p) {
@@ -69,7 +74,7 @@ function extractPhones(text) {
   const found = new Set();
   for (const m of text.matchAll(PHONE_RE)) {
     const n = normalisePhone(m[0]);
-    if (n) found.add(n);
+    if (n && !FICTIONAL_PHONE.test(n)) found.add(n);
   }
   return [...found];
 }
@@ -140,4 +145,6 @@ module.exports = {
   pickBestEmail,
   ROLES,
   NOT_A_NAME,
+  NOT_CLUB_EMAIL,
+  FICTIONAL_PHONE,
 };

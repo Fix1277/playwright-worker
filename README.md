@@ -24,3 +24,23 @@ Output: `out/golf_clubs_leads_enriched.csv`. Progress is cached in
 `out/cache.jsonl`, so an interrupted run resumes; delete it to re-scrape.
 
 Needs outbound web access to the club sites.
+
+## Live Google Sheet
+
+`scripts/sync-sheet.js` pushes the enriched CSV into the shared sheet
+"Golf Club Leads (Fixstrut)". The sheet wins: it only fills blank cells,
+never touches `outreach_status` / `last_contacted` / `outreach_notes`,
+refreshes the `web_*` columns, recomputes priority only when it fills an
+email or contact, and appends new clubs as new rows.
+
+Setup (once):
+1. Google Cloud console: create a project, enable the Google Sheets API.
+2. IAM & Admin → Service Accounts → create one → Keys → Add key → JSON.
+3. Share the sheet with the service account's `client_email` as Editor.
+4. Set env vars `GOOGLE_SERVICE_ACCOUNT_JSON` (key contents or path) and
+   `GOOGLE_SHEET_ID` (from the sheet URL).
+
+```bash
+npm run enrich -- --county Essex && npm run sync -- --dry-run   # preview
+npm run sync
+```
