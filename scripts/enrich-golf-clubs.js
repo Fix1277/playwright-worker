@@ -18,7 +18,7 @@ const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 const { chromium } = require('playwright');
 const {
-  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail,
+  extractEmails, extractPhones, extractContacts, rankLinks, pickBestEmail, NOT_A_NAME,
 } = require('./extract');
 
 const MAX_EXTRA_PAGES = 4;
@@ -50,10 +50,14 @@ function parseArgs(argv) {
   return args;
 }
 
-function siteUrl(website) {
+// Directory URLs are often bare domains; some sites only answer with www,
+// others only without, so try both.
+function siteUrls(website) {
   const w = website.trim();
-  if (!w) return null;
-  return /^https?:\/\//.test(w) ? w : `https://${w.startsWith('www.') ? w : `www.${w}`}`;
+  if (!w) return [];
+  if (/^https?:\/\//.test(w)) return [w];
+  const bare = w.replace(/^www\./, '');
+  return [`https://www.${bare}`, `https://${bare}`];
 }
 
 function loadCache(file) {
@@ -78,20 +82,30 @@ async function readPage(page, url) {
 }
 
 async function scrapeClub(context, row) {
-  const start = siteUrl(row.website);
   const result = {
     lead_id: row.lead_id, emails: [], phones: [], contacts: [], pages: [], status: '', error: '',
   };
   const page = await context.newPage();
   try {
     let home;
-    try {
-      home = await readPage(page, start);
-    } catch (e) {
-      // Some clubs only answer on http or without www.
-      const alt = start.replace('https://www.', 'http://');
-      home = await readPage(page, alt);
+    let lastError;
+    for (const url of siteUrls(row.website)) {
+      try {
+        home = await readPage(page, url);
+        if (home.status < 400) break;
+      } catch (e) {
+        lastError = e;
+        // A redirect to a plain-http site fails behind some proxies; retry it over https.
+        const m = /at (http:\/\/\S+)/.exec(e.message);
+        if (m && !m[1].includes(new URL(url).hostname)) {
+          try {
+            home = await readPage(page, m[1].replace('http://', 'https://'));
+            if (home.status < 400) break;
+          } catch (e2) { lastError = e2; }
+        }
+      }
     }
+    if (!home) throw lastError;
     const host = new URL(home.finalUrl).hostname.replace(/^www\./, '');
     const visited = [home];
     for (const url of rankLinks(home.links, host).slice(0, MAX_EXTRA_PAGES)) {
@@ -122,6 +136,8 @@ async function scrapeClub(context, row) {
 
 function applyResult(row, r) {
   const filled = [];
+  // Cached results may predate the name filter.
+  r.contacts = r.contacts.filter(c => !NOT_A_NAME.test(c.name));
   if (!row.email && r.emails.length) {
     row.email = pickBestEmail(r.emails, r.host);
     filled.push('email');

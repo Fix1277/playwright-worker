@@ -41,3 +41,8 @@ test('ranks same-site contact links first', () => {
 test('prefers own-domain generic inbox over pro shop or ISP', () => {
   assert.strictEqual(x.pickBestEmail(['proshop@club.co.uk', 'bob@btinternet.com', 'info@club.co.uk'], 'www.club.co.uk'), 'info@club.co.uk');
 });
+
+test('ignores headings and buttons that look like names', () => {
+  const c = x.extractContacts('Visitor Booking - General Manager\nCrondon Park Golf, Director of Golf\nGeneral Manager: Iain Evans');
+  assert.deepStrictEqual(c.map(p => p.name), ['Iain Evans']);
+});

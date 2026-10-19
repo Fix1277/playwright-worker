@@ -19,6 +19,9 @@ const ROLES = [
   'Head Professional',
 ];
 
+// Words that show a "name" match is really a heading or button label.
+const NOT_A_NAME = /\b(Golf|Club|Course|Park|Booking|Visitor|Contact|Email|Phone|Tel|Office|Team|Shop|Members?hip|Events?|Hotel|Country|Manager|Secretary|Professional|The|Our|Find|Book|Read|More|View|Call)\b/i;
+
 // Contact-ish pages worth visiting after the homepage, best first.
 const LINK_HINTS = [
   /contact/i,
@@ -86,6 +89,7 @@ function extractContacts(text) {
       for (const m of text.matchAll(re)) {
         const person = m[1].trim();
         if (ROLES.some(x => x.toLowerCase().includes(person.toLowerCase()))) continue;
+        if (NOT_A_NAME.test(person)) continue;
         const key = `${person}|${role}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -135,4 +139,5 @@ module.exports = {
   rankLinks,
   pickBestEmail,
   ROLES,
+  NOT_A_NAME,
 };
